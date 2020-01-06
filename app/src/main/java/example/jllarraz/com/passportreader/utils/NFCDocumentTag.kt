@@ -31,9 +31,11 @@ class NFCDocumentTag {
             var ps: PassportService? = null
             try {
                 val nfc = IsoDep.get(tag)
+                nfc.connect()
                 val unrwappedcs = CardService.getInstance(nfc)
 
                 val cs = WrappingCardService(unrwappedcs, DebugAPDUWrapper())
+                cs.enable()
                 cs.addAPDUListener({e ->
                     Log.d("NFCDocumentTag", e.commandAPDU.toString())
                 })
