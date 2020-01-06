@@ -40,8 +40,6 @@ class NFCDocumentTag {
                     Log.d("NFCDocumentTag", e.commandAPDU.toString())
                 })
 
-                nfc.connect()
-
                 ps = PassportService(cs, PassportService.NORMAL_MAX_TRANCEIVE_LENGTH, PassportService.DEFAULT_MAX_BLOCKSIZE, false, true)
                 ps.open()
 
