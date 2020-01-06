@@ -15,6 +15,7 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import net.sf.scuba.smartcards.CardService
 import net.sf.scuba.smartcards.CardServiceException
+import net.sf.scuba.smartcards.WrappingCardService
 import org.jmrtd.*
 import org.jmrtd.lds.icao.DG1File
 import org.jmrtd.lds.icao.MRZInfo
@@ -30,9 +31,16 @@ class NFCDocumentTag {
             var ps: PassportService? = null
             try {
                 val nfc = IsoDep.get(tag)
-                val cs = CardService.getInstance(nfc)
+                val unrwappedcs = CardService.getInstance(nfc)
 
-                ps = PassportService(cs, 256, 224, false, true)
+                val cs = WrappingCardService(unrwappedcs, DebugAPDUWrapper())
+                cs.addAPDUListener({e ->
+                    Log.d("NFCDocumentTag", e.commandAPDU.toString())
+                })
+
+                nfc.connect()
+
+                ps = PassportService(cs, PassportService.NORMAL_MAX_TRANCEIVE_LENGTH, PassportService.DEFAULT_MAX_BLOCKSIZE, false, true)
                 ps.open()
 
                 val passportNFC = PassportNFC(ps, MRTDTrustStore(), mrzInfo)

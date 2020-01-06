@@ -1,31 +1,19 @@
 package example.jllarraz.com.passportreader.utils
 
 import android.util.Log
-
 import net.sf.scuba.smartcards.CardServiceException
-
 import org.bouncycastle.asn1.ASN1Encodable
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.DERSequence
-import org.jmrtd.BACKey
-import org.jmrtd.JMRTDSecurityProvider
-import org.jmrtd.MRTDTrustStore
-import org.jmrtd.PACEKeySpec
-import org.jmrtd.PassportService
-import org.jmrtd.Util
-
+import org.jmrtd.*
+import org.jmrtd.cert.CardVerifiableCertificate
+import org.jmrtd.lds.*
+import org.jmrtd.lds.icao.*
+import org.jmrtd.protocol.*
 import java.io.IOException
 import java.io.InputStream
 import java.math.BigInteger
-import java.security.GeneralSecurityException
-import java.security.KeyStore
-import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
-import java.security.PrivateKey
-import java.security.PublicKey
-import java.security.SecureRandom
-import java.security.Security
-import java.security.Signature
+import java.security.*
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -33,44 +21,9 @@ import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPublicKey
 import java.security.spec.MGF1ParameterSpec
 import java.security.spec.PSSParameterSpec
-import java.util.ArrayList
-import java.util.Arrays
-import java.util.Collections
-import java.util.Random
-import java.util.TreeMap
-import java.util.TreeSet
-
+import java.util.*
 import javax.crypto.Cipher
 import javax.security.auth.x500.X500Principal
-
-import org.jmrtd.FeatureStatus
-import org.jmrtd.VerificationStatus
-import org.jmrtd.cert.CardVerifiableCertificate
-import org.jmrtd.lds.AbstractTaggedLDSFile
-import org.jmrtd.lds.ActiveAuthenticationInfo
-import org.jmrtd.lds.CVCAFile
-import org.jmrtd.lds.CardAccessFile
-import org.jmrtd.lds.ChipAuthenticationInfo
-import org.jmrtd.lds.ChipAuthenticationPublicKeyInfo
-import org.jmrtd.lds.LDSFileUtil
-import org.jmrtd.lds.PACEInfo
-import org.jmrtd.lds.SODFile
-import org.jmrtd.lds.SecurityInfo
-import org.jmrtd.lds.icao.COMFile
-import org.jmrtd.lds.icao.DG11File
-import org.jmrtd.lds.icao.DG12File
-import org.jmrtd.lds.icao.DG14File
-import org.jmrtd.lds.icao.DG15File
-import org.jmrtd.lds.icao.DG1File
-import org.jmrtd.lds.icao.DG2File
-import org.jmrtd.lds.icao.DG3File
-import org.jmrtd.lds.icao.DG5File
-import org.jmrtd.lds.icao.DG7File
-import org.jmrtd.lds.icao.MRZInfo
-import org.jmrtd.protocol.BACResult
-import org.jmrtd.protocol.EACCAResult
-import org.jmrtd.protocol.EACTAResult
-import org.jmrtd.protocol.PACEResult
 
 
 class PassportNFC @Throws(GeneralSecurityException::class)
@@ -87,7 +40,8 @@ private constructor() {
      *
      * @since 0.4.9
      */
-    /* The feature status has been created in constructor. */ val features: FeatureStatus
+    /* The feature status has been created in constructor. */
+    val features: FeatureStatus
     /**
      * Gets the verification status thus far.
      *
@@ -388,18 +342,18 @@ private constructor() {
         verificationStatus.setHT(VerificationStatus.Verdict.UNKNOWN, verificationStatus.htReason, hashResults)
 
         /* Check EAC support by DG14 presence. */
-        if (dgNumbers.contains(14)) {
-            features.setEAC(FeatureStatus.Verdict.PRESENT)
-            features.setCA(FeatureStatus.Verdict.PRESENT)
-        } else {
+       // if (dgNumbers.contains(14)) {
+          //  features.setEAC(FeatureStatus.Verdict.PRESENT)
+          //  features.setCA(FeatureStatus.Verdict.PRESENT)
+       // } else {
             features.setEAC(FeatureStatus.Verdict.NOT_PRESENT)
             features.setCA(FeatureStatus.Verdict.NOT_PRESENT)
-        }
+        // }
 
         val hasCA = features.hasCA() == FeatureStatus.Verdict.PRESENT
         if (hasCA) {
             try {
-                val eaccaResults = doEACCA(ps, mrzInfo, dg14File, sodFile)
+                val eaccaResults = doEACCA(ps, dg14File, sodFile)
                 verificationStatus.setCA(VerificationStatus.Verdict.SUCCEEDED, "EAC succeeded", eaccaResults[0])
             } catch (e: Exception) {
                 verificationStatus.setCA(VerificationStatus.Verdict.FAILED, "CA Failed", null)
@@ -1186,7 +1140,7 @@ private constructor() {
     }
 
 
-    private fun doEACCA(ps: PassportService, mrzInfo: MRZInfo, dg14File: DG14File?, sodFile: SODFile?): List<EACCAResult> {
+    private fun doEACCA(ps: PassportService, dg14File: DG14File?, sodFile: SODFile?): List<EACCAResult> {
         if (dg14File == null) {
             throw NullPointerException("dg14File is null")
         }
